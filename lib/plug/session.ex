@@ -48,7 +48,7 @@ defmodule Plug.Session do
 
   @cookie_opts [:domain, :max_age, :path, :secure, :http_only, :extra, :same_site]
 
-  def init(opts) do
+  def init(opts) when is_list(opts) do
     store = Plug.Session.Store.get(Keyword.fetch!(opts, :store))
     key = Keyword.fetch!(opts, :key)
     cookie_opts = Keyword.take(opts, @cookie_opts)
@@ -61,6 +61,17 @@ defmodule Plug.Session do
       key: key,
       cookie_opts: cookie_opts
     }
+  end
+
+  def init({module, function, args}) do
+    case apply(module, function, args) do
+      session_config when is_list(session_config) ->
+        init(session_config)
+      session_config ->
+        raise ArgumentError,
+          "invalid MFA session_config return #{inspect session_config}. " <>
+          "When session_config is a MFA, it's expected that it will return a keyword list of supported options in `Plug.Session`"
+    end
   end
 
   def call(conn, config) do
